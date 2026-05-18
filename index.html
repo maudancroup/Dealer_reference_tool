@@ -142,6 +142,8 @@ const RP_BMAP={scala:350,colore:700,full:1250,poker:2500,sc:5000,sr:10000};
 const UTH_BM={sr:500,sc:50,poker:10,full:3,colore:1.5,scala:1};
 const UTH_TM={sr:50,sc:40,poker:30,full:8,colore:7,scala:4,tris:3};
 const RP_QUAL=["asso_re","coppia","doppia","tris","scala","colore","full","poker","sc","sr"];
+const RP_JP_PAY={tris:50,scala:150,colore:200,full:250,poker:300,sc:"25%",sr:"100%"};
+const UTH_JP_PAY={full:50,poker:100,sc:"25%",sr:"100%"};
 
 const RP_FC={"Pagamenti":[{q:"TRIS - banco qualifica con COPPIA\nCosa paghi?",a:"Ante <strong>PUSH</strong><br/>Bet <strong>3:1</strong>"},{q:"Banco NON qualifica\nGiocatore ha COLORE",a:"Ante <strong>1:1</strong><br/>Bet <strong>PUSH</strong>"},{q:"Bonus per FULL HOUSE?",a:"<strong>1.250 fissi</strong>"},{q:"Bonus per POKER?",a:"<strong>2.500 fissi</strong>"}],"Regole":[{q:"Qualifica minima del Banco?",a:"<strong>Asso + Re</strong> o superiore"},{q:"Costo cambio carte o 6a carta?",a:"<strong>1x Ante</strong>"},{q:"Bonus attivo - cambia carte.\nCosa succede al Bonus e al Jackpot?",a:"Bonus: <strong>perso immediatamente</strong><br/>Jackpot: <strong>rimane valido</strong>"},{q:"Assicurazione: min e max?",a:"Min: pari all <strong>Ante</strong><br/>Max: <strong>Bet x moltiplicatore</strong><br/>Es. Ante 10, Poker: min 10 max 400"},{q:"Acquisto gioco banco:\ncosa fa il dealer con l Ante?",a:"Il dealer <strong>RITIRA</strong> l Ante<br/>come costo acquisto<br/>Non la paga al giocatore"}],"Blind":[{q:"Quante postazioni Blind max?",a:"Max <strong>2</strong> postazioni vacanti<br/>solo se <strong>adiacenti</strong> alla sua"},{q:"Quando punta Ante e Bet\nper le postazioni Blind?",a:"<strong>PRIMA</strong> della distribuzione"},{q:"Postazione Blind:\npuo cambiare carte?",a:"<strong>NO</strong> cambio carte<br/>SI acquisto <strong>6a carta</strong>"},{q:"Postazione Blind:\npuo assicurarsi?",a:"<strong>SI</strong> anche al buio<br/>Importo verificato a fine mano"},{q:"Quando si scoprono le carte Blind?",a:"Solo al <strong>confronto finale</strong><br/>Dopo pagamenti postazioni Open"}]};
 
@@ -196,10 +198,14 @@ function RpCalc(){
   const [bhand,setBhand]=useState("colore");
   const [ha,setHa]=useState(false);
   const [samt,setSamt]=useState("10");
+  const [hj,setHj]=useState(false);
   const [res,setRes]=useState(null);
   function calc(){
     const aN=parseFloat(ante)||0,bN=aN*2;
-    const pv=HVALS[ph],bv=HVALS[bh],bq=RP_QUAL.includes(bh);
+    let jN=0,jl="";
+    if(hj){jN=-5;jl="-5 (gettone)";const jp=RP_JP_PAY[ph];if(jp){if(jp==="100%"){jl="100% Jackpot + Envy 500";jN=-5+0;}else if(jp==="25%"){jl="25% Jackpot + Envy 100";jN=-5+0;}else{jN=-5+jp;jl="+"+jp+" fissi (netto: "+(jp-5)+")";}}}
+    const bq=bh!=="nq"&&RP_QUAL.includes(bh);
+    const pv=HVALS[ph],bv=bh==="nq"?-1:HVALS[bh];
     let ar=0,br=0,sr=0,bon=0,al="",bl="",sl="",bol="";
     if(ph==="fold"){ar=-aN;al="Fold";bl="---";}
     else if(!bq){ar=aN;al="1:1";br=0;bl="Push";if(ha){sr=parseFloat(samt)||0;sl="Pagata 1:1";}}
@@ -207,21 +213,23 @@ function RpCalc(){
     else if(pv===bv){ar=0;al="Push";br=0;bl="Push";if(ha){sr=-(parseFloat(samt)||0)/2;sl="Egalite meta";}}
     else{ar=-aN;al="Perda";br=-bN;bl="Perda";if(ha){sr=-(parseFloat(samt)||0);sl="Perda";}}
     if(hb&&ph!=="fold"){const f=RP_BMAP[bhand];if(f){bon=f;bol=f.toLocaleString("it-IT")+" fissi";}else{bon=0;bol="Non qualificato";}}
-    setRes({aN,bN,ar,br,sr,bon,al,bl,sl,bol,tot:ar+br+sr+bon,bq});
+    setRes({aN,bN,ar,br,sr,bon,jN,jl,al,bl,sl,bol,tot:ar+br+sr+bon+jN,bq});
   }
   const hO=Object.entries(HLBLS).map(([k,v])=><option key={k} value={k}>{v}</option>);
+  const bHOrp=[<option key="nq" value="nq">Non Qualifica</option>,...Object.entries(HLBLS).filter(([k])=>k!=="fold"&&k!=="alta").map(([k,v])=><option key={k} value={k}>{v}</option>)];
   const bO=["scala","colore","full","poker","sc","sr","tris","doppia","coppia","asso_re"].map(k=><option key={k} value={k}>{HLBLS[k]}</option>);
   return(
     <div>
       <div className="cgrid">
         <div><div className="fl">Ante (euro)</div><input className="finp" type="number" value={ante} onChange={e=>setAnte(e.target.value)}/></div>
         <div><div className="fl">Mano Giocatore</div><select className="fsel" value={ph} onChange={e=>setPh(e.target.value)}>{hO}</select></div>
-        <div><div className="fl">Mano Banco</div><select className="fsel" value={bh} onChange={e=>setBh(e.target.value)}>{hO}</select></div>
+        <div><div className="fl">Mano Banco</div><select className="fsel" value={bh} onChange={e=>setBh(e.target.value)}>{bHOrp}</select></div>
         <div>
           <label style={{display:"flex",alignItems:"center",gap:6,cursor:"pointer",fontSize:12,marginBottom:4}}><input type="checkbox" checked={ha} onChange={e=>setHa(e.target.checked)}/>Assicurazione</label>
           {ha?<input className="finp" type="number" value={samt} onChange={e=>setSamt(e.target.value)} placeholder="Importo"/>:null}
           <label style={{display:"flex",alignItems:"center",gap:6,cursor:"pointer",fontSize:12,marginTop:6}}><input type="checkbox" checked={hb} onChange={e=>setHb(e.target.checked)}/>Bonus</label>
           {hb?<select className="fsel" style={{marginTop:4}} value={bhand} onChange={e=>setBhand(e.target.value)}>{bO}</select>:null}
+          <label style={{display:"flex",alignItems:"center",gap:6,cursor:"pointer",fontSize:12,marginTop:8}}><input type="checkbox" checked={hj} onChange={e=>setHj(e.target.checked)}/>Jackpot Progressive (5 €/CHF)</label>
         </div>
       </div>
       <button className="cbtnrp" onClick={calc}>CALCOLA</button>
@@ -232,6 +240,7 @@ function RpCalc(){
         <div className="rrow"><span className="rl">Bet ({res.bN})</span><span className={"rv "+(res.br>0?"rvwin":res.br<0?"rvlose":"rvpush")}>{res.bl}</span></div>
         {ha?<div className="rrow"><span className="rl">Assicurazione</span><span className={"rv "+(res.sr>0?"rvwin":res.sr<0?"rvlose":"rvpush")}>{res.sl}</span></div>:null}
         {hb?<div className="rrow"><span className="rl">Bonus</span><span className={"rv "+(res.bon>0?"rvwin":"rvpush")}>{res.bol}</span></div>:null}
+        {hj?<div className="rrow"><span className="rl">Jackpot (5 €/CHF)</span><span className={"rv "+(res.jN>-5?"rvwin":"rvlose")}>{res.jl}</span></div>:null}
         <div className="rtotrp"><span>Totale netto</span><span className={res.tot<0?"bigneg":"big"}>{res.tot>=0?"+":""}{res.tot.toFixed(2)}</span></div>
       </div>:null}
     </div>
@@ -244,29 +253,33 @@ function UthCalc(){
   const [ph,setPh]=useState("scala");
   const [bh,setBh]=useState("coppia");
   const [ht,setHt]=useState(false);
-  const [th,setTh]=useState("tris");
+  const [tamt,setTamt]=useState(10);
+  const [hj,setHj]=useState(false);
   const [res,setRes]=useState(null);
   function calc(){
-    const aN=parseFloat(ante)||0,pN=aN*parseInt(pm),blN=aN;
-    const pv=HVALS[ph],bv=HVALS[bh],bq=bv>=2;
+    const aN=parseFloat(ante)||0,pN=aN*parseInt(pm),blN=aN,tN=ht?tamt:0;
+    let jN=0,jl="";
+    if(hj){jN=-5;jl="-5 (gettone)";const jp=UTH_JP_PAY[ph];if(jp){if(jp==="100%"){jl="100% Jackpot + Envy 500";jN=-5+0;}else if(jp==="25%"){jl="25% Jackpot + Envy 100";jN=-5+0;}else{jN=-5+jp;jl="+"+jp+" fissi (netto: "+(jp-5)+")";}}}
+    const bq=bh!=="nq"&&HVALS[bh]>=2;
+    const pv=HVALS[ph],bv=bh==="nq"?-1:HVALS[bh];
     let ar=0,pr=0,blr=0,tr=0,al="",pl="",bll="",tl="";
-    if(!bq){ar=0;al="Push";if(pv>bv){pr=pN;pl="1:1";const bm=UTH_BM[ph];if(bm){blr=blN*bm;bll=bm===1.5?"3:2":bm+":1";}else{blr=0;bll="Push";}}else if(pv===bv){pr=0;pl="Push";blr=0;bll="Push";}else{pr=-pN;pl="Perda";blr=-blN;bll="Perda";}}
+    if(!bq){ar=0;al="Push";if(pv>bv||bh==="nq"){pr=pN;pl="1:1";const bm=UTH_BM[ph];if(bm){blr=blN*bm;bll=bm===1.5?"3:2":bm+":1";}else{blr=0;bll="Push";}}else if(pv===bv){pr=0;pl="Push";blr=0;bll="Push";}else{pr=-pN;pl="Perda";blr=-blN;bll="Perda";}}
     else if(pv>bv){ar=aN;al="1:1";pr=pN;pl="1:1";const bm=UTH_BM[ph];if(bm){blr=blN*bm;bll=bm===1.5?"3:2":bm+":1";}else{blr=0;bll="Push";}}
     else if(pv===bv){ar=0;al="Push";pr=0;pl="Push";blr=0;bll="Push";}
     else{ar=-aN;al="Perda";pr=-pN;pl="Perda";blr=-blN;bll="Perda";}
-    if(ht){const tm=UTH_TM[th];if(tm){tr=aN*tm;tl=tm+":1";}else{tr=0;tl="Non qualificato";}}
-    setRes({aN,pN,blN,ar,pr,blr,tr,al,pl,bll,tl,tot:ar+pr+blr+tr,bq});
+    if(ht){const tm=UTH_TM[ph];if(tm){tr=tN*tm;tl=tm+":1 su "+tN+"€";}else{tr=0;tl="Non qualificato";}}
+    setRes({aN,pN,blN,tN,jN,jl,ar,pr,blr,tr,al,pl,bll,tl,tot:ar+pr+blr+tr+jN,bq});
   }
   const hO=Object.entries(HLBLS).filter(([k])=>k!=="fold"&&k!=="asso_re"&&k!=="alta").map(([k,v])=><option key={k} value={k}>{v}</option>);
-  const tO=["sr","sc","poker","full","colore","scala","tris"].map(k=><option key={k} value={k}>{HLBLS[k]}</option>);
+  const bHO=[<option key="nq" value="nq">Non Qualifica</option>,...Object.entries(HLBLS).filter(([k])=>k!=="fold"&&k!=="alta").map(([k,v])=><option key={k} value={k}>{v}</option>)];
   return(
     <div>
       <div className="cgrid">
         <div><div className="fl">Ante e Blind (euro)</div><input className="finp" type="number" value={ante} onChange={e=>setAnte(e.target.value)}/></div>
         <div><div className="fl">Moltiplicatore Play</div><select className="fsel" value={pm} onChange={e=>setPm(e.target.value)}><option value="4">4x pre-Flop</option><option value="3">3x pre-Flop</option><option value="2">2x Flop</option><option value="1">1x Turn e River</option></select></div>
         <div><div className="fl">Mano Giocatore</div><select className="fsel" value={ph} onChange={e=>setPh(e.target.value)}>{hO}</select></div>
-        <div><div className="fl">Mano Banco</div><select className="fsel" value={bh} onChange={e=>setBh(e.target.value)}>{hO}</select></div>
-        <div><label style={{display:"flex",alignItems:"center",gap:6,cursor:"pointer",fontSize:12}}><input type="checkbox" checked={ht} onChange={e=>setHt(e.target.checked)}/>Trips Bonus</label>{ht?<select className="fsel" style={{marginTop:4}} value={th} onChange={e=>setTh(e.target.value)}>{tO}</select>:null}</div>
+        <div><div className="fl">Mano Banco</div><select className="fsel" value={bh} onChange={e=>setBh(e.target.value)}>{bHO}</select></div>
+        <div><label style={{display:"flex",alignItems:"center",gap:6,cursor:"pointer",fontSize:12}}><input type="checkbox" checked={ht} onChange={e=>setHt(e.target.checked)}/>Trips Bonus</label>{ht?<div><div className="fl" style={{marginTop:6}}>Importo Trips</div><select className="fsel" value={tamt} onChange={e=>setTamt(parseInt(e.target.value))}><option value="10">10 €/CHF</option><option value="20">20 €/CHF</option><option value="30">30 €/CHF</option></select></div>:null}<label style={{display:"flex",alignItems:"center",gap:6,cursor:"pointer",fontSize:12,marginTop:8}}><input type="checkbox" checked={hj} onChange={e=>setHj(e.target.checked)}/>Jackpot Progressive (5 €/CHF)</label></div>
       </div>
       <button className="cbtnuth" onClick={calc}>CALCOLA</button>
       {res?<div className="res resuth">
@@ -275,7 +288,7 @@ function UthCalc(){
         <div className="rrow"><span className="rl">Ante ({res.aN})</span><span className={"rv "+(res.ar>0?"rvwin":res.ar<0?"rvlose":"rvpush")}>{res.al}</span></div>
         <div className="rrow"><span className="rl">Blind ({res.blN})</span><span className={"rv "+(res.blr>0?"rvwin":res.blr<0?"rvlose":"rvpush")}>{res.bll}</span></div>
         <div className="rrow"><span className="rl">Play ({res.pN})</span><span className={"rv "+(res.pr>0?"rvwin":res.pr<0?"rvlose":"rvpush")}>{res.pl}</span></div>
-        {ht?<div className="rrow"><span className="rl">Trips</span><span className={"rv "+(res.tr>0?"rvwin":"rvpush")}>{res.tl}{res.tr>0?" (+"+res.tr.toFixed(2)+")":""}</span></div>:null}
+        {ht?<div className="rrow"><span className="rl">Trips ({tamt} €/CHF)</span><span className={"rv "+(res.tr>0?"rvwin":"rvpush")}>{res.tl}{res.tr>0?" = +"+res.tr.toFixed(2)+"€/CHF":""}</span></div>:null}{hj?<div className="rrow"><span className="rl">Jackpot (5 €/CHF)</span><span className={"rv "+(res.jN>-5?"rvwin":"rvlose")}>{res.jl}</span></div>:null}
         <div className="rtotuth"><span>Totale netto</span><span className={res.tot<0?"bigneg":"big"}>{res.tot>=0?"+":""}{res.tot.toFixed(2)}</span></div>
       </div>:null}
     </div>
