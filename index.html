@@ -123,7 +123,33 @@ button:disabled{opacity:0.3;cursor:default}
 <script type="text/babel">
 const {useState} = React;
 
-const HANDS=[["Scala Reale","A K Q J 10","Scala colore dal 10 all Asso","1"],["Scala Colore","7 8 9 10 J","5 carte stesso seme in seq.","2"],["Poker","K K K K 5","Quattro carte stesso valore","3"],["Full House","Q Q Q 9 9","Tris + Coppia","4"],["Colore","2 7 J Q A","5 carte stesso seme","5"],["Scala","5 6 7 8 9","5 carte in sequenza","6"],["Tris","8 8 8 K 2","Tre carte stesso valore","7"],["Doppia Coppia","J J 4 4 A","Due coppie","8"],["Coppia","A A 7 3 K","Due carte stesso valore","9"],["Asso/Re","A K 7 3 2","Qualifica minima banco RP","10"]];
+function CardImg({code}){
+  const suits={"S":"♠","H":"♥","D":"♦","C":"♣"};
+  const colors={"S":"#1a1a2e","H":"#c0392b","D":"#c0392b","C":"#1a1a2e"};
+  const s=code.slice(-1);
+  const v=code.slice(0,-1)==="0"?"10":code.slice(0,-1);
+  const red=s==="H"||s==="D";
+  return(
+    <div style={{display:"inline-flex",flexDirection:"column",alignItems:"center",justifyContent:"space-between",width:34,height:50,background:"#fff",borderRadius:4,padding:"2px 3px",margin:"0 1px",boxShadow:"0 2px 6px rgba(0,0,0,0.5)",flexShrink:0}}>
+      <span style={{fontFamily:"Josefin Sans,sans-serif",fontSize:v==="10"?9:11,fontWeight:700,color:red?"#c0392b":"#1a1a2e",lineHeight:1,alignSelf:"flex-start"}}>{v}</span>
+      <span style={{fontSize:15,lineHeight:1,color:red?"#c0392b":"#1a1a2e"}}>{suits[s]}</span>
+      <span style={{fontFamily:"Josefin Sans,sans-serif",fontSize:v==="10"?9:11,fontWeight:700,color:red?"#c0392b":"#1a1a2e",lineHeight:1,alignSelf:"flex-end",transform:"rotate(180deg)"}}>{v}</span>
+    </div>
+  );
+}
+
+const HANDS=[
+  ["Scala Reale","Scala colore dal 10 all Asso","1",["AH","KH","QH","JH","0H"]],
+  ["Scala Colore","5 carte stesso seme in sequenza","2",["9D","8D","7D","6D","5D"]],
+  ["Poker","Quattro carte stesso valore","3",["KS","KH","KD","KC","5S"]],
+  ["Full House","Tris + Coppia","4",["QS","QH","QD","9S","9H"]],
+  ["Colore","5 carte stesso seme","5",["AS","JS","7S","4S","2S"]],
+  ["Scala","5 carte in sequenza","6",["9S","8H","7D","6C","5S"]],
+  ["Tris","Tre carte stesso valore","7",["8S","8H","8D","KS","2H"]],
+  ["Doppia Coppia","Due coppie","8",["JS","JH","4D","4C","AS"]],
+  ["Coppia","Due carte stesso valore","9",["AS","AH","7D","3C","KS"]],
+  ["Asso/Re","Qualifica minima banco RP","10",["AS","KH","7D","3C","2S"]],
+];
 
 const RP_STEPS=[["Raccolta scommesse","Ante (obbl.) + Bonus (opt.) + Jackpot. Postazioni Blind: Ante + Bet PRIMA della distribuzione.","Il giocatore non guarda le carte prima che la distribuzione sia completata"],["Distribuzione","5 carte coperte ai giocatori. 4 coperte + 1 scoperta al banco. Postazioni Blind restano coperte.","Inizia dal giocatore alla tua sinistra, senso orario"],["Cambio e 6a carta","Costo: 1x Ante. Blind: NO cambio, SI 6a carta. Il dealer guarda carte Blind e verifica Bonus prima della 6a.","Bonus attivo + cambio = Bonus perso. Jackpot NON perso con il cambio."],["Decisione","BET = 2x Ante. FOLD = perde Ante + Bonus + Jackpot. Blind: Ante e Bet gia piazzate, nessuna decisione.",""],["Assicurazione","Solo Tris o superiore. Min = pari Ante. Max = Bet x moltiplicatore tabella. Es. Ante 10 con Poker: min 10, max 400. Blind: assicurazione al buio, importo verificato a fine mano.","Capo Tavolo puo autorizzare anticipo Bonus per coprire assicurazione se giocatore e privo di gettoni"],["Scopri le carte","Rivela le 4 carte coperte del banco e annuncia il punto.",""],["Qualifica banco","Asso/Re o superiore = SI. NO qualifica: Ante 1:1, Bet Push. Acquisto gioco banco: dealer RITIRA Ante come pagamento, brucia carta piu alta, pesca nuova.",""],["Pagamenti","Da DESTRA, senso antiorario. Open prima, Blind per ultime. Doppia combinazione: max 2, la seconda deve avere almeno 1 carta non usata nella prima.",""],["Bonus e Jackpot","Entrambi sulle PRIME 5 CARTE ORIGINALI. Bonus: da Scala in su, importo fisso, perso se si cambia. Jackpot: da Tris in su, NON perso se si cambia.",""]];
 
@@ -141,6 +167,39 @@ const RP_BMULT={asso_re:1,coppia:1,doppia:2,tris:3,scala:4,colore:5,full:7,poker
 const RP_BMAP={scala:350,colore:700,full:1250,poker:2500,sc:5000,sr:10000};
 const UTH_BM={sr:500,sc:50,poker:10,full:3,colore:1.5,scala:1};
 const UTH_TM={sr:50,sc:40,poker:30,full:8,colore:7,scala:4,tris:3};
+const RP_DOPPIA=[
+  ["Asso/Re","Asso/Re e Asso/Re","1:1",["AS","KS","JS","5H","2D"]],
+  ["Coppia","Coppia","1:1",["JH","JC","AS","6D","3H"]],
+  ["Coppia","Coppia e Asso/Re","2:1",["AS","KS","8H","8D","3S","KH"]],
+  ["Doppia Coppia","Doppia Coppia","2:1",["JH","JS","QH","QD","AS"]],
+  ["Doppia Coppia","Doppia Coppia e Asso/Re","3:1",["QS","QH","JS","JH","AS","KC"]],
+  ["Doppia Coppia","Due Doppie Coppie","4:1",["AS","AH","JH","JS","8S","8D"]],
+  ["Tris","Tris","3:1",["0S","0C","0D","AS","JS"]],
+  ["Tris","Tris e Asso/Re","4:1",["JS","JH","JD","AS","KC"]],
+  ["Scala","Scala","4:1",["5H","4D","3C","2S","AS"]],
+  ["Scala","Scala e Asso/Re","5:1",["5H","4D","3C","2S","AS","KC"]],
+  ["Scala","Scala e Scala","8:1",["7S","6H","5D","4C","3S","2H"]],
+  ["Colore","Colore","5:1",["AS","0S","9S","7S","4S"]],
+  ["Colore","Colore e Asso/Re","6:1",["AS","0S","9S","7S","4S","KH"]],
+  ["Colore","Colore e Coppia","6:1",["AS","0S","9S","7S","4S","4H"]],
+  ["Colore","Colore e Scala","9:1",["JS","0S","9S","7S","6S","8H"]],
+  ["Colore","Colore e Colore","10:1",["AS","0S","9S","7S","6S","2H"]],
+  ["Full","Full House","7:1",["JC","JH","JD","AS","AH"]],
+  ["Full","Full House e Asso/Re","8:1",["JC","JH","JD","AS","AH","KC"]],
+  ["Full","Full House e Full House","14:1",["AS","AH","AD","JS","JH","JC"]],
+  ["Poker","Poker","20:1",["JS","JH","JD","JC","AS"]],
+  ["Poker","Poker e Asso/Re","21:1",["JS","JH","JD","JC","AS","KC"]],
+  ["Poker","Poker e Full House","27:1",["JS","JH","JD","JC","AS","AH"]],
+  ["Scala Colore","Scala Colore","50:1",["6D","5D","4D","3D","2D"]],
+  ["Scala Colore","Scala Colore e Asso/Re","51:1",["5D","4D","3D","2D","AD","KC"]],
+  ["Scala Colore","Scala Colore e Scala","54:1",["KD","QD","JD","0D","9D","AS"]],
+  ["Scala Colore","Scala Colore e Colore","55:1",["KD","QD","JD","0D","9D","2S"]],
+  ["Scala Colore","Scala Colore e Scala Colore","100:1",["KD","QD","JD","0D","9D","8D"]],
+  ["Scala Reale","Scala Reale","100:1",["AH","KH","QH","JH","0H"]],
+  ["Scala Reale","Scala Reale e Scala","104:1",["AH","KH","QH","JH","0H","9S"]],
+  ["Scala Reale","Scala Reale e Colore","105:1",["AH","KH","QH","JH","0H","7S"]],
+  ["Scala Reale","Scala Reale e Scala Colore","150:1",["AH","KH","QH","JH","0H","9D"]],
+];
 const RP_QUAL=["asso_re","coppia","doppia","tris","scala","colore","full","poker","sc","sr"];
 const RP_JP_PAY={tris:50,scala:150,colore:200,full:250,poker:300,sc:"25%",sr:"100%"};
 const UTH_JP_PAY={full:50,poker:100,sc:"25%",sr:"100%"};
@@ -298,20 +357,59 @@ function UthCalc(){
 function RPGame(){
   const g="rp";
   const [tab,setTab]=useState("Flusso");
-  const TABS=["Flusso","Mani","Pagamenti","Simulatore","Prompt","Flashcard"];
+  const TABS=["Flusso","Mani","Pagamenti","Doppia","Simulatore","Prompt","Flashcard"];
   return(
     <div>
       <nav className="nav">{TABS.map(t=><button key={t} className={"ntab rp"+(tab===t?" on":"")} onClick={()=>setTab(t)}>{t}</button>)}</nav>
       <div className="content">
         {tab==="Flusso"?<div className="card rp"><div className="ctitle rp">Flusso della Mano</div><Steps steps={RP_STEPS} g={g}/></div>:null}
-        {tab==="Mani"?<div className="card rp"><div className="ctitle rp">Ranking delle Mani</div><div className="hands">{HANDS.map(([n,ex,d,r])=><div key={n} className="hcard rp"><div className="hname rp">{n}</div><div className="hex">{ex}</div><div className="hdesc">{d}</div><div style={{fontFamily:"Josefin Sans,sans-serif",fontSize:10,color:"rgba(201,168,76,0.4)",marginTop:3}}>{r}</div></div>)}</div></div>:null}
+        {tab==="Mani"?<div className="card rp"><div className="ctitle rp">Ranking delle Mani</div>
+  {HANDS.map(([n,d,r,cards])=>(
+    <div key={n} style={{background:"rgba(0,0,0,0.3)",border:"1px solid rgba(201,168,76,0.15)",borderLeft:"3px solid rgba(201,168,76,0.4)",borderRadius:"0 6px 6px 0",padding:"10px 12px",marginBottom:8}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:7}}>
+        <div style={{fontFamily:"Josefin Sans,sans-serif",fontSize:12,fontWeight:700,color:"#c9a84c"}}>{n}</div>
+        <div style={{fontFamily:"Josefin Sans,sans-serif",fontSize:9,color:"rgba(201,168,76,0.4)",letterSpacing:1}}>#{r}</div>
+      </div>
+      <div style={{display:"flex",gap:3,marginBottom:6}}>{cards.map((c,i)=><CardImg key={i} code={c}/>)}</div>
+      <div style={{fontSize:11,color:"rgba(245,236,215,0.5)",lineHeight:1.5}}>{d}</div>
+    </div>
+  ))}
+</div>:null}
         {tab==="Pagamenti"?<div>
           <div className="card rp"><div className="ctitle rp">Tabella Bet</div><div className="alert alertrpw">Solo quando banco qualifica E giocatore vince. Ante e Push.</div><table className="tbl"><thead><tr><th className="rp">Combinazione</th><th className="rp">Payout Bet</th></tr></thead><tbody>{RP_BET.map(([h,p])=><tr key={h}><td>{h}</td><td className="payrp">{p}</td></tr>)}</tbody></table></div>
           <div className="card rp"><div className="ctitle rp">Bonus (importi fissi)</div><div className="alert alertrpw">Prime 5 carte originali. Indipendente dal banco. Perso se si cambia carte.</div><table className="tbl"><thead><tr><th className="rp">Combinazione</th><th className="rp">Importo fisso</th></tr></thead><tbody>{RP_BONUS.map(([h,p])=><tr key={h}><td>{h}</td><td className="payg">{p}</td></tr>)}</tbody></table></div>
           <div className="card rp"><div className="ctitle rp">Jackpot Progressive</div><table className="tbl"><thead><tr><th className="rp">Combinazione</th><th className="rp">Payout</th><th className="rp">Envy</th></tr></thead><tbody>{RP_JP.map(([h,p,e])=><tr key={h}><td>{h}</td><td className="payrp">{p}</td><td style={{color:e?"#7ecba1":"rgba(245,236,215,0.3)"}}>{e||"—"}</td></tr>)}</tbody></table></div>
           <div className="card rp"><div className="ctitle rp">Assicurazione — Esiti</div><table className="tbl"><thead><tr><th className="rp">Situazione</th><th className="rp">Esito</th></tr></thead><tbody><tr><td>Banco NON qualifica</td><td className="payg">Pagata 1:1</td></tr><tr><td>Banco qualifica con combinazione superiore</td><td className="payy">Push</td></tr><tr><td>Banco qualifica e batte il giocatore</td><td className="payr">Persa</td></tr><tr><td>Egalite (stesso punto)</td><td className="payr">Persa meta</td></tr></tbody></table></div>
         </div>:null}
-        {tab==="Simulatore"?<div className="card rp"><div className="ctitle rp">Simulatore Payout</div><RpCalc/></div>:null}
+        {tab==="Doppia"?<div className="card rp">
+  <div className="ctitle rp">Doppia Combinazione</div>
+  <div className="alert alertrpw" style={{marginBottom:16}}>Payout = somma dei due moltiplicatori applicati alla Bet. La seconda combinazione deve includere almeno 1 carta non usata nella prima. Max 2 combinazioni.</div>
+  {RP_DOPPIA.map(([p1,combo,pay,cards],i)=>{
+    const prev=i>0?RP_DOPPIA[i-1][0]:null;
+    const isNew=p1!==prev;
+    const sepIdx=cards.length===6?5:cards.length===5?4:null;
+    return(
+      <div key={i}>
+        {isNew&&<div style={{fontFamily:"Josefin Sans,sans-serif",fontSize:9,letterSpacing:2,textTransform:"uppercase",color:"rgba(201,168,76,0.4)",padding:"14px 0 8px",borderTop:i>0?"1px solid rgba(201,168,76,0.1)":"none",marginTop:i>0?4:0}}>{p1}</div>}
+        <div style={{background:"rgba(0,0,0,0.35)",borderRadius:7,padding:"10px 12px",marginBottom:7,borderLeft:"3px solid rgba(201,168,76,0.25)"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+            <div style={{fontSize:13,color:"#f5ecd7",fontWeight:600}}>{combo}</div>
+            <div style={{fontFamily:"Josefin Sans,sans-serif",fontSize:17,fontWeight:700,color:"#e8c96d"}}>{pay}</div>
+          </div>
+          <div style={{display:"flex",gap:3,flexWrap:"wrap",alignItems:"center"}}>
+            {cards.map((c,ci)=>(
+              <span key={ci} style={{display:"inline-flex",alignItems:"center"}}>
+                {ci===sepIdx&&<span style={{color:"rgba(201,168,76,0.3)",fontSize:14,margin:"0 4px"}}>+</span>}
+                <CardImg code={c}/>
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  })}
+</div>:null}
+{tab==="Simulatore"?<div className="card rp"><div className="ctitle rp">Simulatore Payout</div><RpCalc/></div>:null}
         {tab==="Prompt"?<div className="card rp"><div className="ctitle rp">Prompt Card</div><div className="pc">
           <div className="pcirp"><h4 className="pcih4rp">Qualifica Banco</h4><p className="pcip">Asso/Re o sup. <span className="tagg">SI</span> Inferiore <span className="tagr">NO</span></p></div>
           <div className="pcirp"><h4 className="pcih4rp">Banco NON qualifica</h4><p className="pcip">Ante <span className="tagy">1:1</span> Bet <span className="tagy">PUSH</span><br/>Assic: pagata 1:1 subito</p></div>
@@ -332,13 +430,25 @@ function RPGame(){
 function UTHGame(){
   const g="uth";
   const [tab,setTab]=useState("Flusso");
-  const TABS=["Flusso","Mani","Pagamenti","Simulatore","Prompt","Flashcard"];
+  const TABS=["Flusso","Mani","Pagamenti","Doppia","Simulatore","Prompt","Flashcard"];
   return(
     <div>
       <nav className="nav">{TABS.map(t=><button key={t} className={"ntab uth"+(tab===t?" on":"")} onClick={()=>setTab(t)}>{t}</button>)}</nav>
       <div className="content">
         {tab==="Flusso"?<div className="card uth"><div className="ctitle uth">Flusso della Mano</div><Steps steps={UTH_STEPS} g={g}/></div>:null}
-        {tab==="Mani"?<div className="card uth"><div className="ctitle uth">Ranking delle Mani</div><div className="alert alertuthi">Migliori 5 su 7 carte (2 hole + 5 board).</div><div className="hands">{HANDS.map(([n,ex,d,r],i)=><div key={n} className="hcard uth"><div className="hname uth">{n}</div><div className="hex">{ex}</div><div className="hdesc">{i===9?"Nessuna combinazione":d}</div><div style={{fontFamily:"Josefin Sans,sans-serif",fontSize:10,color:"rgba(13,120,110,0.45)",marginTop:3}}>{i===8?"9 - Qualifica banco":r}</div></div>)}</div></div>:null}
+        {tab==="Mani"?<div className="card uth"><div className="ctitle uth">Ranking delle Mani</div>
+  <div className="alert alertuthi" style={{marginBottom:12}}>Migliori 5 su 7 carte (2 hole + 5 board).</div>
+  {HANDS.map(([n,d,r,cards],i)=>(
+    <div key={n} style={{background:"rgba(0,0,0,0.3)",border:"1px solid rgba(13,120,110,0.15)",borderLeft:"3px solid rgba(13,120,110,0.4)",borderRadius:"0 6px 6px 0",padding:"10px 12px",marginBottom:8}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:7}}>
+        <div style={{fontFamily:"Josefin Sans,sans-serif",fontSize:12,fontWeight:700,color:"#0e7c6e"}}>{n}</div>
+        <div style={{fontFamily:"Josefin Sans,sans-serif",fontSize:9,color:"rgba(13,120,110,0.5)",letterSpacing:1}}>{i===8?"Qualifica banco":i===9?"Nessuna comb.":"#"+r}</div>
+      </div>
+      <div style={{display:"flex",gap:3,marginBottom:6}}>{cards.map((c,ci)=><CardImg key={ci} code={c}/>)}</div>
+      <div style={{fontSize:11,color:"rgba(245,236,215,0.5)",lineHeight:1.5}}>{i===9?"Nessuna combinazione":d}</div>
+    </div>
+  ))}
+</div>:null}
         {tab==="Pagamenti"?<div>
           <div className="card uth"><div className="ctitle uth">Esiti Showdown</div><table className="tbl"><thead><tr><th className="uth">Situazione</th><th className="uth">Ante</th><th className="uth">Play</th><th className="uth">Blind</th></tr></thead><tbody><tr><td>Banco NON qualifica</td><td className="payy">Push</td><td className="payt">1:1</td><td className="payt">Tab.2</td></tr><tr><td>Banco qualifica — Vince giocatore</td><td className="payg">1:1</td><td className="payg">1:1</td><td className="payt">Tab.2</td></tr><tr><td>Banco qualifica — Vince banco</td><td className="payr">Perda</td><td className="payr">Perda</td><td className="payr">Perda</td></tr><tr><td>Parita</td><td className="payy">Push</td><td className="payy">Push</td><td className="payy">Push</td></tr></tbody></table></div>
           <div className="card uth"><div className="ctitle uth">Tabella 2 — Blind (min. Scala)</div><div className="alert alertrpw">Sotto la Scala la Blind e sempre Push, anche se il giocatore vince.</div><table className="tbl"><thead><tr><th className="uth">Combinazione</th><th className="uth">Payout</th></tr></thead><tbody>{UTH_BLIND.map(([h,p])=><tr key={h}><td>{h}</td><td className={p==="Push"?"payy":"payt"}>{p}</td></tr>)}</tbody></table></div>
