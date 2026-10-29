@@ -123,18 +123,78 @@ button:disabled{opacity:0.3;cursor:default}
 <script type="text/babel">
 const {useState} = React;
 
+/* Casino-style card face: off-white card, cream inner frame, jumbo index (poker size 63x88) */
+const SUIT_PATH={
+  H:"M0,4.4C-1.6,2.7-4.6,0.6-4.6,-1.6C-4.6,-3.4-3.3,-4.4-2,-4.4C-1,-4.4-0.3,-3.8 0,-3C0.3,-3.8 1,-4.4 2,-4.4C3.3,-4.4 4.6,-3.4 4.6,-1.6C4.6,0.6 1.6,2.7 0,4.4Z",
+  D:"M0,-4.8L3.4,0L0,4.8L-3.4,0Z",
+  S:"M0,-4.6C-1.6,-2.9-4.6,-0.9-4.6,1.2C-4.6,2.9-3.3,3.6-2.2,3.6C-1.5,3.6-0.9,3.2-0.6,2.6L-1.5,4.8L1.5,4.8L0.6,2.6C0.9,3.2 1.5,3.6 2.2,3.6C3.3,3.6 4.6,2.9 4.6,1.2C4.6,-0.9 1.6,-2.9 0,-4.6Z"
+};
+function Pip({s,x,y,k=1,flip=false,fill}){
+  if(s==="C"){
+    return(<g transform={`translate(${x},${y}) scale(${k}) rotate(${flip?180:0})`} fill={fill}>
+      <circle cx="0" cy="-2.4" r="2"/><circle cx="-2.3" cy="0.9" r="2"/><circle cx="2.3" cy="0.9" r="2"/>
+      <path d="M-0.6,0.4L-1.5,4.8L1.5,4.8L0.6,0.4Z"/></g>);
+  }
+  return <path d={SUIT_PATH[s]} transform={`translate(${x},${y}) scale(${k}) rotate(${flip?180:0})`} fill={fill}/>;
+}
+const PIP_LAYOUT={
+  2:[["c",0],["c",1]],
+  3:[["c",0],["c",.5],["c",1]],
+  4:[["l",0],["r",0],["l",1],["r",1]],
+  5:[["l",0],["r",0],["c",.5],["l",1],["r",1]],
+  6:[["l",0],["r",0],["l",.5],["r",.5],["l",1],["r",1]],
+  7:[["l",0],["r",0],["c",.25],["l",.5],["r",.5],["l",1],["r",1]],
+  8:[["l",0],["r",0],["c",.25],["l",.5],["r",.5],["c",.75],["l",1],["r",1]],
+  9:[["l",0],["r",0],["l",1/3],["r",1/3],["c",.5],["l",2/3],["r",2/3],["l",1],["r",1]],
+  10:[["l",0],["r",0],["c",1/6],["l",1/3],["r",1/3],["l",2/3],["r",2/3],["c",5/6],["l",1],["r",1]]
+};
+/* Frame: x 17..46, y 7..81 */
+const FX=17,FY=7,FW=29,FH=74,FCX=FX+FW/2,FCY=FY+FH/2;
+function CourtHalf({v,s,ink}){
+  const robe=v==="K"?"#c8102e":v==="Q"?"#1f3f8f":"#1a1a1a";
+  const trim=v==="J"?"#c8102e":"#e3a92b";
+  return(
+    <g>
+      <rect x={FX+1} y={FY+18} width={FW-2} height={FCY-FY-18} fill={robe}/>
+      <rect x={FX+1} y={FY+22} width={FW-2} height="3" fill={trim}/>
+      <rect x={FX+1} y={FY+28} width={FW-2} height="2" fill="#111"/>
+      <rect x={FCX-2} y={FY+18} width="4" height={FCY-FY-18} fill={trim} opacity="0.9"/>
+      <circle cx={FCX} cy={FY+12.5} r="5" fill="#f6dcb6" stroke="#222" strokeWidth="0.5"/>
+      {v==="K"&&<path d={`M${FCX-6},${FY+8} L${FCX-6},${FY+2.5} L${FCX-3},${FY+5} L${FCX},${FY+1.5} L${FCX+3},${FY+5} L${FCX+6},${FY+2.5} L${FCX+6},${FY+8}Z`} fill="#e3a92b" stroke="#222" strokeWidth="0.5"/>}
+      {v==="Q"&&<path d={`M${FCX-5},${FY+8} L${FCX-4.5},${FY+4} L${FCX-2},${FY+6} L${FCX},${FY+3} L${FCX+2},${FY+6} L${FCX+4.5},${FY+4} L${FCX+5},${FY+8}Z`} fill="#e3a92b" stroke="#222" strokeWidth="0.5"/>}
+      {v==="J"&&<path d={`M${FCX-6},${FY+8.5} Q${FCX},${FY+1} ${FCX+7},${FY+7} L${FCX+6},${FY+8.5}Z`} fill="#c8102e" stroke="#222" strokeWidth="0.5"/>}
+      <Pip s={s} x={FX+4.5} y={FY+5} k={0.6} fill={ink}/>
+    </g>
+  );
+}
 function CardImg({code}){
-  const suits={"S":"♠","H":"♥","D":"♦","C":"♣"};
-  const colors={"S":"#1a1a2e","H":"#c0392b","D":"#c0392b","C":"#1a1a2e"};
   const s=code.slice(-1);
   const v=code.slice(0,-1)==="0"?"10":code.slice(0,-1);
   const red=s==="H"||s==="D";
+  const ink=red?"#d0111b":"#111111";
+  const n=v==="A"?1:(["J","Q","K"].includes(v)?0:parseInt(v,10));
+  const colX={l:FX+7.5,c:FCX,r:FX+FW-7.5};
+  const yTop=FY+8,ySpan=FH-16;
+  const idx=(
+    <g>
+      <text x="8.5" y="17" textAnchor="middle" fontFamily="Josefin Sans,Arial,sans-serif" fontWeight="700" fontSize={v==="10"?13:17} letterSpacing={v==="10"?-1.2:0} fill={ink}>{v}</text>
+      <Pip s={s} x={8.5} y={25} k={0.95} fill={ink}/>
+    </g>
+  );
   return(
-    <div style={{display:"inline-flex",flexDirection:"column",alignItems:"center",justifyContent:"space-between",width:34,height:50,background:"#fff",borderRadius:4,padding:"2px 3px",margin:"0 1px",boxShadow:"0 2px 6px rgba(0,0,0,0.5)",flexShrink:0}}>
-      <span style={{fontFamily:"Josefin Sans,sans-serif",fontSize:v==="10"?9:11,fontWeight:700,color:red?"#c0392b":"#1a1a2e",lineHeight:1,alignSelf:"flex-start"}}>{v}</span>
-      <span style={{fontSize:15,lineHeight:1,color:red?"#c0392b":"#1a1a2e"}}>{suits[s]}</span>
-      <span style={{fontFamily:"Josefin Sans,sans-serif",fontSize:v==="10"?9:11,fontWeight:700,color:red?"#c0392b":"#1a1a2e",lineHeight:1,alignSelf:"flex-end",transform:"rotate(180deg)"}}>{v}</span>
-    </div>
+    <svg viewBox="0 0 63 88" width="35" height="49" style={{display:"inline-block",margin:"0 1px",flexShrink:0,borderRadius:3,boxShadow:"0 2px 6px rgba(0,0,0,0.5)"}} aria-label={v+s}>
+      <rect x="0" y="0" width="63" height="88" rx="4" fill="#f4f4f1"/>
+      <rect x={FX} y={FY} width={FW} height={FH} fill="#f1e4c6" stroke="#2b2b2b" strokeWidth="0.6"/>
+      {n>=2&&PIP_LAYOUT[n].map(([c,f],i)=><Pip key={i} s={s} x={colX[c]} y={yTop+f*ySpan} k={0.8} flip={f>0.5} fill={ink}/>)}
+      {n===1&&<Pip s={s} x={FCX} y={FCY} k={2.3} fill={ink}/>}
+      {n===0&&<g>
+        <CourtHalf v={v} s={s} ink={ink}/>
+        <g transform={`rotate(180 ${FCX} ${FCY})`}><CourtHalf v={v} s={s} ink={ink}/></g>
+        <line x1={FX} y1={FCY} x2={FX+FW} y2={FCY} stroke="#2b2b2b" strokeWidth="0.5"/>
+      </g>}
+      {idx}
+      <g transform="rotate(180 31.5 44)">{idx}</g>
+    </svg>
   );
 }
 
